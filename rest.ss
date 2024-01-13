@@ -104,11 +104,8 @@
       )
 
     (define (render-many name rows fields)
-      (define obj (json:make-object))
-      (define objs (map (lambda (r) (render-one r fields))
-			rows))
-      (json:set! obj name objs)
-      obj)
+      (map (lambda (r) (render-one r fields))
+	   rows))
 
     (lambda (model params)
       (define id (json:ref params 'id #f))
