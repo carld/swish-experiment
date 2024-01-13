@@ -1,0 +1,180 @@
+/* Copyright 2018 Beckman Coulter, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy,
+ * modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+ * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE. */
+
+body, form, div { margin:0px; padding:0px; }
+
+body {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  background-repeat:no-repeat;
+  color:#000;
+  overflow:hidden;
+}
+
+.hidden { display: none; }
+
+table, td, th { border-collapse:collapse; }
+tr:nth-child(even) {background: #FBFBFB}
+tr:nth-child(odd) {background: #FFF}
+td, th { padding:1px 7px 1px 7px; border: 1px solid #999; }
+th { }
+td { }
+
+td.stack { white-space: pre; font-family: monospace; max-width: 20vw; }
+
+ul { margin:3px 0px 7px; }
+ul ul { margin:2px 0px 0px; }
+
+label, p, h1, h2, h3, h4 {
+  font-size:1em;
+  margin:0px;
+  padding:0px;
+  font-weight:normal;
+}
+
+p { margin-bottom: .25em; }
+
+textarea, select, input[type="text"], input[type="file"] {
+  border:1px solid #999;
+}
+
+input[type="text"] { width:80px; }
+input[type="checkbox"] { margin:0px; margin-left:7px; top:3px; position:relative; border:1px solid #999; }
+
+button {
+  border: 1px solid #677078;
+  background: #EEE;
+  height:2em;
+  margin:0px 5px 3px 0px;
+  padding:0px 10px;
+  color: black;
+  border-radius: 3px 3px 3px 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+div.content {
+    grid-row: 2;
+    padding: 2pt;
+    overflow: auto;
+    display: grid;
+    grid-template-rows: auto 1fr;
+}
+
+div.menu a { padding-left:7px; }
+div.menu div.panel { padding-bottom:7px; background: #FFF; border-radius: 5px; border: solid 1px #888; }
+
+div.undocked { position:absolute; right:15px; top:5px; padding-bottom:8px; font-size:0.85em; }
+div.undocked a { display:inline-block; text-decoration:none; padding:0px 10px; color:#999;}
+div.undocked.menu a:hover + div.menu.item { display:block; }
+div.undocked.menu div.menu.item { position:absolute; top:20px; right:5px; width:410px; }
+div.undocked.menu div.menu.item { display:none; }
+
+* html .undocked.menu { display:none; }
+
+#main-nav {
+    grid-row: 1;
+    top: 0px;
+    display: flex;
+    background: #777;
+    width: 100%;
+    line-height: 1.375;
+    padding-top: 1px;
+    font-family: Helvetica, sans-serif;
+    font-size: 11pt;
+}
+
+#main-nav > * {
+    margin-left:0px;
+    padding: 3px;
+    padding-left: 5px;
+    padding-right: 5px;
+    white-space: nowrap;
+}
+
+#main-nav > a {
+    color: #444;
+    background: #EEE;
+    text-decoration: none;
+    border: solid 1px #777;
+    border-bottom: solid 1px #777;
+}
+
+#main-nav > span {
+    background: white;
+    text-decoration: none;
+    border: solid 1px #777;
+    border-bottom: solid 0px white;
+}
+
+#main-nav > .hostinfo {
+    margin-left: 0px;
+    color: white;
+}
+
+* html div.panel { position:fixed; }
+
+div.panel div.column { margin-right:7px; }
+
+div.panel h2 { font-size:1em; color: black; background: #DDD; margin-bottom:15px; text-align:center; border-radius: 5px 5px 0px 0px; line-height: 1.5; }
+
+div.section { margin-top: 1em; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+
+div.row{ width:100%; position:relative; min-height:28px; }
+div.row p {display:inline-table; margin-left:7px;}
+div.row button { height:24px; margin:3px 7px; }
+div.row label { padding-left:7px; display:inline-block; width:34%; margin-top:7px; color:#555; }
+div.row input[type="text"] { width:50%;}
+div.row select { width:50%;}
+div.row table { display:inline-table; margin-top:7px; width:300px;}
+* html div.row { position:fixed; }
+
+.column.collapsed, .collapsed { display:none; }
+* html div.collapsed {display:none;}
+.complete { background-color: white; }
+.failed { background-color: #FFA0AF; }
+
+.figure { margin:10px; margin:10px auto; border:1px solid #999; height:200px; width:700px; }
+.caption { display:block; margin:0px auto 10px; width:700px; }
+
+.resizable { resize:both; overflow:auto; }
+.both.resizable { resize:both; overflow:auto; }
+.horizontal.resizable { resize:both; overflow:auto; }
+.vertical.resizable { resize:both; overflow:auto; }
+
+td.elide {
+}
+
+label.elide {
+    display: block;
+}
+
+input.elide {
+    display: none;
+}
+
+input.elide:checked + .elide {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    padding: .5em 0px .5em 0px;
+}
