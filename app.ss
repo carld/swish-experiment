@@ -20,7 +20,7 @@
    (mvc:table
     `(#(GET "^/([^/]+)/?$"
 	    ,(rest:action:sql->json 'admin-db "" 'table 'id) (table))
-      #(GET "^/([^/]+)/show/([^/]+)$"
+      #(GET "^/([^/]+)/([^/]+)$"
 	    ,(rest:action:sql->json 'admin-db "" 'table 'id) (table id))
       ))))
 
