@@ -18,8 +18,10 @@
 (define app-url-handler
   (mvc:url-handler
    (mvc:table
-    `(#(GET "^/([^/]+)/?$" ,(rest:action:sql->json 'admin-db "") (table))
-      #(GET "^/([^/]+)/([^/]+)$" ,(rest:action:sql->json 'admin-db "") (table id))
+    `(#(GET "^/([^/]+)/?$"
+	    ,(rest:action:sql->json 'admin-db "" 'table 'id) (table))
+      #(GET "^/([^/]+)/show/([^/]+)$"
+	    ,(rest:action:sql->json 'admin-db "" 'table 'id) (table id))
       ))))
 
 (http:add-server

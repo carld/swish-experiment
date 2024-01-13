@@ -17,7 +17,8 @@
     (lambda (view params)
       (match view
 	[#(ok ,content)
-	 `#(200 (("Content-Type" . ,content-type))
+	 `#(200 (("Content-Type" . ,content-type)
+		 ("Access-Control-Allow-Origin" . "*"))
 		,(string->utf8 content))]
 	[#(error 'not-found)
 	 `#(404 (("Content-Type" . "text/plain"))
@@ -26,14 +27,13 @@
 	 `#(500 (("Content-Type" . "text/plain"))
 		,(string->utf8 "Internal Server Error"))])))
 
-  (define (rest:action:sql->json db path-prefix)
+  (define (rest:action:sql->json db path-prefix table pk)
     (mvc:action
      (mvc:controller (rest:controller))
-     (mvc:view (rest:view:url->sql db path-prefix))
-     (mvc:model (rest:model:url->sql db path-prefix))))
+     (mvc:view (rest:view:url->sql db path-prefix table pk))
+     (mvc:model (rest:model:url->sql db path-prefix table pk))))
 
-					; add PK as an argument?
-  (define (rest:model:url->sql db path-prefix)
+  (define (rest:model:url->sql db path-prefix table pk)
     (define (many-from params)
       (define table (json:ref params 'table #f))
       (define sort  (json:ref params 'sort "id"))
@@ -95,7 +95,7 @@
 	 (error 'model "error fetching data" err)]))
     )
 
-  (define (rest:view:url->sql db path-prefix)
+  (define (rest:view:url->sql db path-prefix table pk)
     (define (render-one row fields)
       (define obj (json:make-object))
       (vector-map (lambda (f v) (json:set! obj f v))
@@ -104,13 +104,15 @@
       )
 
     (define (render-many name rows fields)
+      (define obj (json:make-object))
       (define objs (map (lambda (r) (render-one r fields))
 			rows))
-      (json:make-object [name objs]))
+      (json:set! obj name objs)
+      obj)
 
     (lambda (model params)
       (define id (json:ref params 'id #f))
-      (define table-name (json:ref params 'name #f))
+      (define table-name (string->symbol (json:ref params table #f)))
       (cond [id  (match model
 		   [#(ok ,rows ,tmd)
 		    `#(ok ,(json:object->string
