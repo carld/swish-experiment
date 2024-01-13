@@ -10,7 +10,7 @@
   (import (mvc))
   (import (json))
   (import (ssql))
-  
+
   (define content-type "application/hal+json")
 
   (define (rest:controller)
@@ -31,7 +31,7 @@
      (mvc:controller (rest:controller))
      (mvc:view (rest:view:url->sql db path-prefix))
      (mvc:model (rest:model:url->sql db path-prefix))))
-  
+
 					; add PK as an argument?
   (define (rest:model:url->sql db path-prefix)
     (define (many-from params)
@@ -42,11 +42,11 @@
       (define page (string->number (json:ref params 'page "0")))
       (define sql
 	(ssql `(select
-		     *
-		     (from ,(string->symbol table))
-		     (order by ,(string->symbol sort) ,(string->symbol dir))
-		     (limit ?)
-		     (offset ?))))
+		*
+		(from ,(string->symbol table))
+		(order by ,(string->symbol sort) ,(string->symbol dir))
+		(limit ?)
+		(offset ?))))
       (define bindings (list page-size (* page page-size)))
       (apply execute sql bindings))
 
@@ -123,4 +123,3 @@
 			     (render-many table-name rows tmd)))])])))
 
   )
-

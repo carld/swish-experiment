@@ -4,10 +4,10 @@
   (import (chezscheme))
   (import (swish imports))
   (import (ssql))
-  
+
   (define schema-version "2024-01-04_001")
   (define schema-name 'experiment-data)
-  
+
   (define-syntax (check-db-result stx)
     (syntax-case stx ()
       [(_ dbt ... )
@@ -16,7 +16,7 @@
 	     [#(ok ,rows) 'ok]
 	     [#(error ,msg) (error db:transaction "db error:" msg)])
 	   ...)]))
-  
+
   (define (setup-data db)
     (check-db-result
      (db:transaction db (lambda () (sql:create-versions)))
@@ -38,14 +38,14 @@
          [(#(,version)) version]
          [() #f])]
       [(name version)
-         (execute "insert or replace into versions (name, version) values (?, ?)"
+       (execute "insert or replace into versions (name, version) values (?, ?)"
 		(symbol->string name) version)]))
-  
+
 					; create the database tables that don't already exist
   (define (init-db)
     (create-table users
 		  (id text) (name text) (email text) (created_at datetime default current_timestamp))
-    
+
     (execute
      (ssql
       `(insert (into users (name id))
@@ -54,7 +54,7 @@
      (ssql
       `(insert (into users (name id))
 	       (values ("Dr Emmett Brown" ,(uuid->string (osi_make_uuid))))))))
-  
+
 					; deal with an pre-existing old schema
   (define (migrate-db)
     (match (sql:schema-version schema-name)
@@ -77,4 +77,3 @@
 
 
   )
-

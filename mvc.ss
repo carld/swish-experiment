@@ -12,7 +12,7 @@
   (import (swish imports))
   (import (json))
 
-  
+
 					; in the initization of the gen-server, construct the
 					; (controller (view (model params)))
 					; using these combinators
@@ -65,7 +65,7 @@
       (match entry
 	[#(ok #(,m ,p ,action ,capture-names) ,matches)
 	 `#(ok ,action ,(json:set-list params capture-names (cdr matches)))]
-	
+
 	[#(ok #(,method ,path-regexp ,action) ,matches)
 	 `#(ok ,action ,params) ]
 	[,err   err])))

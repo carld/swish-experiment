@@ -1,12 +1,11 @@
 #!chezscheme
 (library (json)
-  (export 
-	  json:set-list
-
-	  )
+  (export
+   json:set-list
+   )
   (import (chezscheme))
   (import (swish imports))
-  
+
   (define json:set-list
     (case-lambda
       [(obj names values)
