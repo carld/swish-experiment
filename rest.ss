@@ -35,7 +35,7 @@
 
   (define (rest:model:url->sql db path-prefix table pk)
     (define (many-from params cols)
-      (define table (json:ref params 'table #f))
+      (define table-name (json:ref params table #f))
       (define sort  (json:ref params 'sort "id"))
       (define dir   (json:ref params 'dir "asc"))
       (define page-size (string->number (json:ref params 'page-size "10")))
@@ -43,7 +43,7 @@
       (define sql
 	(ssql `(select
 		,cols
-		(from ,(string->symbol table))
+		(from ,(string->symbol table-name))
 		(order by ,(string->symbol sort) ,(string->symbol dir))
 		(limit ?)
 		(offset ?))))
@@ -51,10 +51,10 @@
       (apply execute sql bindings))
 
     (define (one-from params cols)
-      (define table (json:ref params 'table #f))
+      (define table-name (json:ref params table #f))
       (define id (json:ref params 'id #f))
       (define sql
-	(ssql `(select ,cols (from ,(string->symbol table))
+	(ssql `(select ,cols (from ,(string->symbol table-name))
 		       (where (= id ?)) limit 1)))
       (define bindings (list id))
       (define result (apply execute sql bindings))
