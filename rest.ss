@@ -34,7 +34,7 @@
      (mvc:model (rest:model:url->sql db path-prefix table pk))))
 
   (define (rest:model:url->sql db path-prefix table pk)
-    (define (many-from params)
+    (define (many-from params cols)
       (define table (json:ref params 'table #f))
       (define sort  (json:ref params 'sort "id"))
       (define dir   (json:ref params 'dir "asc"))
@@ -42,7 +42,7 @@
       (define page (string->number (json:ref params 'page "0")))
       (define sql
 	(ssql `(select
-		*
+		,cols
 		(from ,(string->symbol table))
 		(order by ,(string->symbol sort) ,(string->symbol dir))
 		(limit ?)
@@ -50,11 +50,11 @@
       (define bindings (list page-size (* page page-size)))
       (apply execute sql bindings))
 
-    (define (one-from params)
+    (define (one-from params cols)
       (define table (json:ref params 'table #f))
       (define id (json:ref params 'id #f))
       (define sql
-	(ssql `(select * (from ,(string->symbol table))
+	(ssql `(select ,cols (from ,(string->symbol table))
 		       (where (= id ?)) limit 1)))
       (define bindings (list id))
       (define result (apply execute sql bindings))
@@ -85,7 +85,7 @@
 		     [,err  (error 'meta-data "query failed" err)]
 		     ))
       (define tmd  (vector-map string->symbol (transpose/vector md)))
-      (define result (db:transaction db (lambda () (proc params))))
+      (define result (db:transaction db (lambda () (proc params tmd))))
       (match result
 	[#(ok ,rows)
 	 (cond [(and id (null? rows))
