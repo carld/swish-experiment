@@ -95,12 +95,13 @@
       (define _page (maybe-convert  (json:ref params '_page "0") string->number))
       (define _per_page (maybe-convert (json:ref params '_per_page "10") string->number))
       (define _sort (json:ref params '_sort "id"))
-      (define _dir  (json:ref params '_dir  "asc"))
+      (define _order  (json:ref params '_order  "asc"))
+
       (define sql
 	(ssql `(select
 		,cols
 		(from ,(string->symbol table-name))
-		(order by ,(string->symbol _sort) ,(string->symbol _dir))
+		(order by ,(string->symbol _sort) ,(string->symbol _order))
 		(limit ?)
 		(offset ?))))
       (define bindings
