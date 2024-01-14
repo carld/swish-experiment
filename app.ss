@@ -33,7 +33,9 @@
       #(OPTIONS "^/([^/]+)/?$"
 		,(rest:action:options 'admin-db "" 'table 'id)
 		(table))
-
+      #(OPTIONS "^/([^/]+)/([^/]+)$"
+		,(rest:action:options 'admin-db "" 'table 'id)
+		(table id))
       ))))
 
 (http:add-server

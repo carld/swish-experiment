@@ -199,14 +199,18 @@
     (define (update-one params form-data cols)
       (define table-name (json:ref params table #f))
       (define id (json:ref params pk #f))
-      (define assignments (vector-map (lambda (c) `(,c ?)) cols))
+      (define cols-no-id
+	(filter (lambda (c) (not (equal? pk c)))
+		(vector->list cols)))
+      (define assignments (map (lambda (c) `(,c ?)) cols-no-id))
       (define sql
 	(ssql `(update ,(string->symbol table-name)
-		       (set ,@(vector->list assignments))
-		       (where (= ,pk ?)))))
-      (define bindings (vector->list
-			(vector-map (lambda (c) (json:ref form-data c ""))
-				    cols)))
+			     (set ,@assignments)
+			     (where (= ,pk ?)))))
+      (define bindings (append
+			(map (lambda (c) (json:ref form-data c ""))
+			     cols-no-id)
+			(list id)))
       (apply execute sql bindings))
 
     (lambda (params form-data)
@@ -215,8 +219,8 @@
 	      db
 	      (lambda ()
 		(update-one params form-data cols)))
-	[#(ok ,result) form-data]
-	[,err (error 'form-sql "error inserting record" err)])))
+	[#(ok ,result)  form-data]
+	[,err (error 'update-sql "error updating record" err)])))
 
   (define (rest:view:command:update db path-prefix table pk)
     (lambda (model params)
