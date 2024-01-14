@@ -64,7 +64,12 @@
       (define entry (mvc:find-route routes method path))
       (match entry
 	[#(ok #(,m ,p ,action ,capture-names) ,matches)
-	 `#(ok ,action ,(json:set-list params capture-names (cdr matches)))]
+	 `#(ok ,action
+	       ,(json:set-list params capture-names (cdr matches))
+	       ,(expt 2 20)
+	       ,0
+	       ()
+	       )]
 
 	[#(ok #(,method ,path-regexp ,action) ,matches)
 	 `#(ok ,action ,params) ]
@@ -72,21 +77,20 @@
 
   (define (mvc:url-handler route-table-dispatch)
     (http:url-handler
-
-     (http:call-with-form
-      conn header 1048576 0 '()
-      (lambda (form-data)
-	(match (route-table-dispatch (<request> method request)
-				     (<request> path request)
-				     params)
-	  [#(ok ,action ,params)
+     (match (route-table-dispatch (<request> method request)
+				  (<request> path request)
+				  params)
+       [#(ok ,action ,params ,content-limit ,file-limit ,files)
+	(http:call-with-form
+	 conn header content-limit file-limit files
+	 (lambda (form-data)
 	   (match (action params form-data)
 	     [#(ok #(,code ,header ,content))
-	      (http:respond conn code header content)])]
-	  [,err (http:respond conn
-			      404
-			      `(("Content-Type" . "text/plain"))
-			      (string->utf8 "Not Found"))])))))
+	      (http:respond conn code header content)])))]
+       [,err (http:respond conn
+			   404
+			   `(("Content-Type" . "text/plain"))
+			   (string->utf8 "Not Found"))])))
 
 
   )
