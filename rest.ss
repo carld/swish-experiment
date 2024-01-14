@@ -20,14 +20,21 @@
 	 `#(200 (("Content-Type" . ,content-type)
 		 ("Access-Control-Allow-Origin" . "*"))
 		,(string->utf8 content))]
-
+	[#(ok 'created ,content)
+	 `#(201 (("Content-Type" . ,content-type)
+		 ("Access-Control-Allow-Origin" . "*"))
+		,(string->utf8 content))]
 	[#(ok 'allow ,methods)
 	 `#(204 (("Allow" . ,methods)
-		 ("Access-Control-Allow-Origin" . "*"))
-		,(string->utf8 ""))
-	 ]
+		 ("Access-Control-Allow-Origin" . "*")
+		 ("Access-Control-Allow-Methods" . ,methods)
+		 ("Access-Control-Allow-Credentials" . "true")
+		 ("Access-Control-Allow-Headers" . "Content-Type"))
+		,(string->utf8 ""))]
 	[#(ok 'redirect ,location)
-	 `#(303 (("Location" . ,location)))]
+	 `#(303 (("Location" . ,location)
+
+		 ))]
 	[#(error 'not-found)
 	 `#(404 (("Content-Type" . "text/plain"))
 		,(string->utf8 "Not Found"))]
@@ -39,7 +46,11 @@
     (mvc:action
      (mvc:controller (rest:controller))
      (mvc:view (lambda (model params)
-		 `#(ok 'allow (OPTIONS GET POST PUT PATCH))))
+		 `#(ok 'allow
+		       ,(join
+			 (map symbol->string
+			      '(GET HEAD PUT PATCH POST DELETE))
+			 ","))))
      (mvc:model (lambda (params form-data) '()))))
 
   (define (rest:action:query:sql->json db path-prefix table pk)
@@ -155,11 +166,11 @@
 	      db
 	      (lambda ()
 		(insert-one params form-data cols)))
-	[#(ok ,result) `#(ok ,result)]
+	[#(ok ,result) form-data]
 	[,err (error 'form-sql "error inserting record" err)])))
 
   (define (rest:view:command:form->sql db path-prefix table pk)
     (lambda (model params)
-      `#(ok ,(json:object->string (json:make-object [result "ok"])))))
+      `#(ok 'created ,(json:object->string model))))
 
   )
