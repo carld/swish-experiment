@@ -1,5 +1,5 @@
 #!chezscheme
-(library (rest)
+(library (restful-sqlite)
   (export rest:controller
 	  rest:action:query:sql->json
 	  rest:action:command:form->sql

@@ -5,7 +5,7 @@
 	 `(("vendor" . "vendor"))))
 
 (import (mvc))
-(import (rest))
+(import (restful-sqlite))
 (import (data))
 
 (define (admin-db-file)
