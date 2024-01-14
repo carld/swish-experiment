@@ -65,7 +65,7 @@
        (migrate-db)
        ]
       ["2024-01-01"
-       (execute (ssql->str `(alter table users add column email text)))
+       (execute (ssql `(alter table users add column email text)))
        (execute "alter table users add column created_at datetime")
        (sql:schema-version schema-name "2024-01-04")
        (migrate-db)

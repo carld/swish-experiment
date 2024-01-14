@@ -1,9 +1,9 @@
 #!chezscheme
 (library (rest)
   (export rest:controller
-	  rest:action:sql->json
-	  rest:model:url->sql
-	  rest:view:url->sql
+	  rest:action:query:sql->json
+	  rest:action:command:form->sql
+	  rest:action:options
 	  )
   (import (chezscheme))
   (import (swish imports))
@@ -20,6 +20,14 @@
 	 `#(200 (("Content-Type" . ,content-type)
 		 ("Access-Control-Allow-Origin" . "*"))
 		,(string->utf8 content))]
+
+	[#(ok 'allow ,methods)
+	 `#(204 (("Allow" . ,methods)
+		 ("Access-Control-Allow-Origin" . "*"))
+		,(string->utf8 ""))
+	 ]
+	[#(ok 'redirect ,location)
+	 `#(303 (("Location" . ,location)))]
 	[#(error 'not-found)
 	 `#(404 (("Content-Type" . "text/plain"))
 		,(string->utf8 "Not Found"))]
@@ -27,13 +35,42 @@
 	 `#(500 (("Content-Type" . "text/plain"))
 		,(string->utf8 "Internal Server Error"))])))
 
-  (define (rest:action:sql->json db path-prefix table pk)
+  (define (rest:action:options db path-prefix table pk)
     (mvc:action
      (mvc:controller (rest:controller))
-     (mvc:view (rest:view:url->sql db path-prefix table pk))
-     (mvc:model (rest:model:url->sql db path-prefix table pk))))
+     (mvc:view (lambda (model params)
+		 `#(ok 'allow (OPTIONS GET POST PUT PATCH))))
+     (mvc:model (lambda (params form-data) '()))))
 
-  (define (rest:model:url->sql db path-prefix table pk)
+  (define (rest:action:query:sql->json db path-prefix table pk)
+    (mvc:action
+     (mvc:controller (rest:controller))
+     (mvc:view (rest:view:query:url->sql db path-prefix table pk))
+     (mvc:model (rest:model:query:url->sql db path-prefix table pk))))
+
+  (define (rest:action:command:form->sql db path-prefix table pk)
+    (mvc:action
+     (mvc:controller (rest:controller))
+     (mvc:view (rest:view:command:form->sql db path-prefix table pk))
+     (mvc:model (rest:model:command:form->sql db path-prefix table pk))))
+
+  (define (meta-data db table-name)
+    (define sql
+      (ssql `(select name (from (pragma_table_info ,table-name)))))
+    (db:transaction db (lambda () (execute sql))))
+
+  (define (transpose/vector rows)
+    (list->vector (map (lambda (row)
+			 (vector-ref row 0))
+		       rows)))
+
+  (define (table-columns db table-name)
+    (define result (match (meta-data db table-name)
+		     [#(ok ,rows) rows]
+		     [,err (error 'table-columns "query failed" err)]))
+    (vector-map string->symbol (transpose/vector result)))
+
+  (define (rest:model:query:url->sql db path-prefix table pk)
     (define (many-from params cols)
       (define table-name (json:ref params table #f))
       (define sort  (json:ref params 'sort "id"))
@@ -52,56 +89,33 @@
 
     (define (one-from params cols)
       (define table-name (json:ref params table #f))
-      (define id (json:ref params 'id #f))
+      (define id (json:ref params pk #f))
       (define sql
 	(ssql `(select ,cols (from ,(string->symbol table-name))
 		       (where (= id ?)) limit 1)))
-      (define bindings (list id))
-      (define result (apply execute sql bindings))
-      result
-      )
+      (apply execute sql (list id)))
 
-    (define (meta-data params)
-      (define table (json:ref params 'table #f))
-      (define sql
-	(ssql
-	 `(select name (from (pragma_table_info ,table)))))
-      (db:transaction
-       db
-       (lambda ()
-	 (execute sql))))
-
-    (define (transpose/vector rows)
-      (list->vector (map (lambda (row)
-			   (vector-ref row 0))
-			 rows)))
-
-    (lambda (params)
+    (lambda (params form-data)
       (define id (json:ref params 'id #f))
       (define proc (cond [id  one-from]
 			 [else many-from]))
-      (define md   (match (meta-data params)
-		     [#(ok ,rows) rows]
-		     [,err  (error 'meta-data "query failed" err)]
-		     ))
-      (define tmd  (vector-map string->symbol (transpose/vector md)))
-      (define result (db:transaction db (lambda () (proc params tmd))))
+      (define cols  (table-columns db (json:ref params table #f)))
+      (define result (db:transaction db (lambda () (proc params cols))))
       (match result
 	[#(ok ,rows)
 	 (cond [(and id (null? rows))
 		`#(error 'not-found)]
-	       [else `#(ok ,rows ,tmd)])]
+	       [else `#(ok ,rows ,cols)])]
 	[,err
 	 (error 'model "error fetching data" err)]))
     )
 
-  (define (rest:view:url->sql db path-prefix table pk)
-    (define (render-one row fields)
+  (define (rest:view:query:url->sql db path-prefix table pk)
+    (define (render-one row cols)
       (define obj (json:make-object))
-      (vector-map (lambda (f v) (json:set! obj f v))
-		  fields row)
-      obj
-      )
+      (vector-map (lambda (c v) (json:set! obj c v))
+		  cols row)
+      obj)
 
     (define (render-many name rows fields)
       (map (lambda (r) (render-one r fields))
@@ -109,16 +123,43 @@
 
     (lambda (model params)
       (define id (json:ref params 'id #f))
-      (define table-name (string->symbol (json:ref params table #f)))
+      (define table-name (json:ref params table #f))
       (cond [id  (match model
-		   [#(ok ,rows ,tmd)
+		   [#(ok ,rows ,cols)
 		    `#(ok ,(json:object->string
-			    (render-one (car rows) tmd)))]
+			    (render-one (car rows) cols)))]
 		   [,err err]
 		   )]
 	    [else (match model
 		    [#(ok ,rows ,tmd)
 		     `#(ok ,(json:object->string
 			     (render-many table-name rows tmd)))])])))
+
+  (define (rest:model:command:form->sql db path-prefix table pk)
+    (define (insert-one params form-data cols)
+      (define table-name (json:ref params table #f))
+      (define sql
+	(ssql `(insert (into ,(string->symbol table-name) ,cols)
+		       (values ,(make-list (vector-length cols) '?)))))
+      (define bindings (vector->list
+			(vector-map
+			 (lambda (c) (json:ref form-data c ""))
+			 cols)))
+      (apply execute sql bindings))
+
+    (lambda (params form-data)
+      (define cols (table-columns db (json:ref params table #f)))
+      (define id (uuid->string (osi_make_uuid)))
+      (json:set! form-data pk id)
+      (match (db:transaction
+	      db
+	      (lambda ()
+		(insert-one params form-data cols)))
+	[#(ok ,result) `#(ok ,result)]
+	[,err (error 'form-sql "error inserting record" err)])))
+
+  (define (rest:view:command:form->sql db path-prefix table pk)
+    (lambda (model params)
+      `#(ok ,(json:object->string (json:make-object [result "ok"])))))
 
   )

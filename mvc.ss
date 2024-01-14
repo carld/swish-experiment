@@ -19,8 +19,8 @@
 
 					; actions are typically query or command
   (define (mvc:action controller view model)
-    (lambda  (params)
-      (controller (view (model params)))))
+    (lambda  (params form-data)
+      (controller (view (model params form-data)))))
 
   (define (mvc:controller controller)
     (lambda  (view-result)
@@ -37,8 +37,8 @@
 	)))
 
   (define (mvc:model model)
-    (lambda (params)
-      `#(ok ,(model params) ,params)))
+    (lambda (params form-data)
+      `#(ok ,(model params form-data) ,params)))
 
   (define (mvc:route-matches method path table-entry)
     (define matches (pregexp-match (vector-ref table-entry 1) path))
@@ -72,17 +72,22 @@
 
   (define (mvc:url-handler route-table-dispatch)
     (http:url-handler
-     (match (route-table-dispatch (<request> method request)
-				  (<request> path request)
-				  params)
-       [#(ok ,action ,params)
-	(match (action params)
-	  [#(ok #(,code ,header ,content))
-	   (http:respond conn code header content)])]
-       [,err (http:respond conn
-			   404
-			   `(("Content-Type" . "text/plain"))
-			   (string->utf8 "Not Found"))])))
+
+     (http:call-with-form
+      conn header 1048576 0 '()
+      (lambda (form-data)
+	(match (route-table-dispatch (<request> method request)
+				     (<request> path request)
+				     params)
+	  [#(ok ,action ,params)
+	   (match (action params form-data)
+	     [#(ok #(,code ,header ,content))
+	      (http:respond conn code header content)])]
+	  [,err (http:respond conn
+			      404
+			      `(("Content-Type" . "text/plain"))
+			      (string->utf8 "Not Found"))])))))
+
 
   )
 
@@ -90,7 +95,7 @@
 					; examples/tests
 (define c1 (mvc:controller (lambda (v p) (format "result: ~a" v) )))
 (define v1 (mvc:view  (lambda (m p) (number->string m) )))
-(define m1 (mvc:model (lambda (p) (+ 1 p) )))
+(define m1 (mvc:model (lambda (p fd) (+ 1 p) )))
 (define a1 (mvc:action c1 v1 m1))
 					;(a1 `#(ok 6))
 
@@ -98,7 +103,7 @@
 (define entry (t1 'GET "/test/path" (json:make-object )))
 (define result
   (match entry
-    [#(ok ,action ,params) (action 6) ]))
+    [#(ok ,action ,params) (action 6 '()) ]))
 (display  (cond [(equal? result `#(ok "result: 7")) `#(test-ok ,result)]
 		[else `#(test-failed ,result )]))
 (newline)

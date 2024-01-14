@@ -4,9 +4,7 @@
 					; It is based on an evaluator, as used for implementing Lisp interpreters.
 
 (library (ssql)
-  (export ssql->str
-	  ssql
-	  )
+  (export trace-ssql ssql)
   (import (chezscheme))
   (import (swish imports))
 
@@ -86,7 +84,8 @@
       ((min max avg count pragma_table_info) #t)
       (else #f)))
   
-  (define (ssql->str exp)
+  (define (trace-ssql exp)
     (let ((sql-str (ssql exp)))
-      (format #t "DEBUG SSQL: ~s~%" sql-str)
+      (format #t "SSQL|~s~%" exp)
+      (format #t "SSQL|~s~%" sql-str)
       sql-str)))
