@@ -81,21 +81,33 @@
 		     [,err (error 'table-columns "query failed" err)]))
     (vector-map string->symbol (transpose/vector result)))
 
+  (define (maybe-convert obj proc)
+    (cond [obj (proc obj)]
+	  [else  obj]))
+
   (define (rest:model:query:url->sql db path-prefix table pk)
     (define (many-from params cols)
       (define table-name (json:ref params table #f))
-      (define sort  (json:ref params 'sort "id"))
-      (define dir   (json:ref params 'dir "asc"))
-      (define page-size (string->number (json:ref params 'page-size "10")))
-      (define page (string->number (json:ref params 'page "0")))
+					; json-server compatible query string
+      (define _start (maybe-convert (json:ref params '_start #f) string->number ))
+      (define _end   (maybe-convert (json:ref params '_end   #f) string->number))
+      (define _limit (maybe-convert (json:ref params '_limit  #f) string->number))
+      (define _page (maybe-convert  (json:ref params '_page "0") string->number))
+      (define _per_page (maybe-convert (json:ref params '_per_page "10") string->number))
+      (define _sort (json:ref params '_sort "id"))
+      (define _dir  (json:ref params '_dir  "asc"))
       (define sql
 	(ssql `(select
 		,cols
 		(from ,(string->symbol table-name))
-		(order by ,(string->symbol sort) ,(string->symbol dir))
+		(order by ,(string->symbol _sort) ,(string->symbol _dir))
 		(limit ?)
 		(offset ?))))
-      (define bindings (list page-size (* page page-size)))
+      (define bindings
+	(cond [(and _start _end) (list (- _end _start) _start)]
+	      [(and _start _limit) (list _limit _start)]
+	      [(and _page _per_page) (list _per_page (* _per_page _page))]
+	      [else (list 10 0)]))
       (apply execute sql bindings))
 
     (define (one-from params cols)
