@@ -19,13 +19,20 @@
   (mvc:url-handler
    (mvc:table
     `(#(GET "^/([^/]+)/?$"
-	    ,(rest:action:query:sql->json 'admin-db "" 'table 'id) (table))
+	    ,(rest:action:query:sql->json 'admin-db "" 'table 'id)
+	    (table))
       #(GET "^/([^/]+)/([^/]+)$"
-	    ,(rest:action:query:sql->json 'admin-db "" 'table 'id) (table id))
+	    ,(rest:action:query:sql->json 'admin-db "" 'table 'id)
+	    (table id))
       #(POST "^/([^/]+)/?$"
-	     ,(rest:action:command:form->sql 'admin-db "" 'table 'id) (table))
+	     ,(rest:action:command:form->sql 'admin-db "" 'table 'id)
+	     (table))
+      #(PATCH "/([^/]+)/([^/]+)$"
+	      ,(rest:action:command:update 'admin-db "" 'table 'id)
+	      (table id))
       #(OPTIONS "^/([^/]+)/?$"
-		,(rest:action:options 'admin-db "" 'table 'id) (table))
+		,(rest:action:options 'admin-db "" 'table 'id)
+		(table))
 
       ))))
 

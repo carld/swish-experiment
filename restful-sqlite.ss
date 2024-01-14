@@ -4,6 +4,7 @@
 	  rest:action:query:sql->json
 	  rest:action:command:form->sql
 	  rest:action:options
+	  rest:action:command:update
 	  )
   (import (chezscheme))
   (import (swish imports))
@@ -64,6 +65,12 @@
      (mvc:controller (rest:controller))
      (mvc:view (rest:view:command:form->sql db path-prefix table pk))
      (mvc:model (rest:model:command:form->sql db path-prefix table pk))))
+
+  (define (rest:action:command:update db path-prefix table pk)
+    (mvc:action
+     (mvc:controller (rest:controller))
+     (mvc:view (rest:view:command:update db path-prefix table pk))
+     (mvc:model (rest:model:command:update db path-prefix table pk))))
 
   (define (meta-data db table-name)
     (define sql
@@ -163,12 +170,13 @@
     (define (insert-one params form-data cols)
       (define table-name (json:ref params table #f))
       (define sql
-	(ssql `(insert (into ,(string->symbol table-name) ,cols)
-		       (values ,(make-list (vector-length cols) '?)))))
+	(ssql `(insert (into ,(string->symbol table-name)
+			     ,cols)
+		       (values ,(make-list (vector-length cols)
+					   '?)))))
       (define bindings (vector->list
-			(vector-map
-			 (lambda (c) (json:ref form-data c ""))
-			 cols)))
+			(vector-map (lambda (c) (json:ref form-data c ""))
+				    cols)))
       (apply execute sql bindings))
 
     (lambda (params form-data)
@@ -183,6 +191,34 @@
 	[,err (error 'form-sql "error inserting record" err)])))
 
   (define (rest:view:command:form->sql db path-prefix table pk)
+    (lambda (model params)
+      `#(ok 'created ,(json:object->string model))))
+
+
+  (define (rest:model:command:update db path-prefix table pk)
+    (define (update-one params form-data cols)
+      (define table-name (json:ref params table #f))
+      (define id (json:ref params pk #f))
+      (define assignments (vector-map (lambda (c) `(,c ?)) cols))
+      (define sql
+	(ssql `(update ,(string->symbol table-name)
+		       (set ,@(vector->list assignments))
+		       (where (= ,pk ?)))))
+      (define bindings (vector->list
+			(vector-map (lambda (c) (json:ref form-data c ""))
+				    cols)))
+      (apply execute sql bindings))
+
+    (lambda (params form-data)
+      (define cols (table-columns db (json:ref params table #f)))
+      (match (db:transaction
+	      db
+	      (lambda ()
+		(update-one params form-data cols)))
+	[#(ok ,result) form-data]
+	[,err (error 'form-sql "error inserting record" err)])))
+
+  (define (rest:view:command:update db path-prefix table pk)
     (lambda (model params)
       `#(ok 'created ,(json:object->string model))))
 
