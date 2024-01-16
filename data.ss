@@ -44,16 +44,23 @@
 					; create the database tables that don't already exist
   (define (init-db)
     (create-table users
-		  (id text) (name text) (email text) (created_at datetime default current_timestamp))
+		  (id text)
+		  (name text)
+		  (email text)
+		  (created_at datetime default current_timestamp))
 
     (execute
      (ssql
-      `(insert (into users (name id))
-	       (values ("Marty McFly" ,(uuid->string (osi_make_uuid)))))))
+      `(insert (into users (name email id))
+	       (values ("Marty McFly"
+			"marty@bttf.com"
+			,(uuid->string (osi_make_uuid)))))))
     (execute
      (ssql
-      `(insert (into users (name id))
-	       (values ("Dr Emmett Brown" ,(uuid->string (osi_make_uuid))))))))
+      `(insert (into users (name email id))
+	       (values ("Dr Emmett Brown"
+			"doc@bttf.com"
+			,(uuid->string (osi_make_uuid))))))))
 
 					; deal with an pre-existing old schema
   (define (migrate-db)

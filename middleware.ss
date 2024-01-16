@@ -43,41 +43,50 @@
 			    (http:call-url-handler url-handler))
 			  timeout)))
  
-					; TODO
-  (define (middleware:compose . middleware)
-    (trace-let loop ([procs middleware])
-      (cond [(null? procs) #f]
-	    [else 
-	     (let ([arg (loop (cdr procs))])
-	       (cond [arg ((car procs) arg)]
-		     [else (car procs)]))])))
+  (define (middleware:compose url-handler . rest)
+    (cond [(null? rest) url-handler]
+	  [else (apply middleware:compose
+		  ((car rest) url-handler)
+		  (cdr rest))]))
   
-
   )
+
+
+(define (x h . r)
+  (format #t "h: ~a   r:  ~a ~%" h r))
+
+#;(x 1 'a)
+#;(x 2 'a 'b 'c)
+#;(x 3 '(a b))
+#;(x 4)
+(apply x 5 '(a b c d))
+(apply x 5 (cdr '(a)))
 
 (import (middleware))
 (define test-request (<request> make [method 'GET] [original-path "/test"] [path "/test"] [params #f] [host #f] [header #f]))
 (define test-handler (http:url-handler
 		      (format #t "In url-handler~%")
 		      #t))
-(trace-define (mw1 h)
+(define (mw1 h)
   (http:url-handler
    (format #t "In middleware 1: ~a~%" h)
    (http:call-url-handler h)))
-(trace-define (mw2 h)
+(define (mw2 h)
   (http:url-handler
    (format #t "In middleware 2: ~a~%" h)
    (http:call-url-handler h)))
-(trace-define (mw3 h)
+(define (mw3 h)
   (http:url-handler
    (format #t "In middleware 3:~a~%" h)
    (http:call-url-handler h)))
 
 (define m (mw1 (mw2 (mw3 test-handler))))
-;(define mx (middleware:compose mw1 mw2 mw3))
+(define mx (middleware:compose test-handler mw1 mw2 mw3))
 
 (let ([conn 'conn]
       [request test-request]
       [header (json:make-object)]
       [params (json:make-object)])
-  (http:call-url-handler m))
+ (http:call-url-handler m)
+ (http:call-url-handler mx)
+  )

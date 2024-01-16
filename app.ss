@@ -24,11 +24,15 @@
       #(GET ("^/([^/]+)/([^/]+)$" table id)
 	    ,(rest:action:query 'admin-db "" 'table 'id))
       #(POST ("^/([^/]+)/?$" table)
-	     ,(middleware:form-data
-	       (rest:action:command:insert 'admin-db "" 'table 'id)))
+	     ,(middleware:compose
+	       (rest:action:command:insert 'admin-db "" 'table 'id)
+	       middleware:form-data
+	       ))
       #(PATCH ("^/([^/]+)/([^/]+)$" table id)
-	      ,(middleware:form-data
-		(rest:action:command:update 'admin-db "" 'table 'id)))
+	      ,(middleware:compose
+		(rest:action:command:update 'admin-db "" 'table 'id)
+		middleware:form-data
+		))
       #(OPTIONS ("^/([^/]+)/?$" table)
 		,(rest:action:options 'admin-db "" 'table 'id))
       #(OPTIONS ("^/([^/]+)/([^/]+)$" table id)
