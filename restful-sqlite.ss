@@ -25,6 +25,11 @@
 	 `#(201 (("Content-Type" . ,content-type)
 		 ("Access-Control-Allow-Origin" . "*"))
 		,(string->utf8 content))]
+	[#(ok 'accepted ,content) ; for background processing
+	 `#(202 (("Content-Type" . ,content-type)
+		 ("Access-Control-Allow-Origin" . "*"))
+		,(string->utf8 content))]
+	
 	[#(ok 'allow ,methods)
 	 `#(204 (("Allow" . ,methods)
 		 ("Access-Control-Allow-Origin" . "*")
@@ -226,6 +231,6 @@
 
   (define (rest:view:command:update db path-prefix table pk)
     (lambda (model params)
-      `#(ok 'created ,(json:object->string model))))
+      `#(ok ,(json:object->string model))))
 
   )

@@ -27,15 +27,13 @@
     (lambda  (view-result)
       (match view-result
 	[#(ok ,view ,params) `#(ok ,(controller view params))]
-	[,err         err]
-	)))
+	[,err         err])))
 
   (define (mvc:view view)
     (lambda  (model-result)
       (match model-result
 	[#(ok ,model ,params) `#(ok ,(view model params) ,params)]
-	[,err          err]
-	)))
+	[,err          err])))
 
   (define (mvc:model model)
     (lambda (params)
