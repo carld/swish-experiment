@@ -25,14 +25,19 @@
 
 
 					; example middleware that logs the environment and the response
+
+					; refer to common log format
+					;host ident authuser date request status bytes
+					;127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] "GET /apache_pb.gif HTTP/1.0" 200 2326
   (define (middleware:log url-handler)
     (http:url-handler
-     (format #t "LOG: middleware:logging env: ~a ~a ~a~%"
-	     (<request> method request)
-	     (<request> path request)
-	     (<request> params request))
-     (let ((resp (http:call-url-handler url-handler)))
-       (format #t "LOG: middleware:logging resp: ~a~%" resp)
+     (let ([resp (http:call-url-handler url-handler)])
+       (format #t "~a - - [~a] \"~a ~a\" ~a - ~%"
+	       (<request> host request)
+	       (date-and-time (current-date 0))
+	       (<request> method request)
+	       (<request> path request)
+	       resp)
        resp)))
 
   (define (middleware:read-json-content url-handler)
@@ -66,33 +71,22 @@
   
   )
 
-
-(define (x h . r)
-  (format #t "h: ~a   r:  ~a ~%" h r))
-
-#;(x 1 'a)
-#;(x 2 'a 'b 'c)
-#;(x 3 '(a b))
-#;(x 4)
-(apply x 5 '(a b c d))
-(apply x 5 (cdr '(a)))
-
 (import (middleware))
 (define test-request (<request> make [method 'GET] [original-path "/test"] [path "/test"] [params #f] [host #f] [header #f]))
 (define test-handler (http:url-handler
-		      (format #t "In url-handler~%")
+;		      (format #t "In url-handler~%")
 		      #t))
 (define (mw1 h)
   (http:url-handler
-   (format #t "In middleware 1: ~a~%" h)
+;   (format #t "In middleware 1: ~a~%" h)
    (http:call-url-handler h)))
 (define (mw2 h)
   (http:url-handler
-   (format #t "In middleware 2: ~a~%" h)
+;   (format #t "In middleware 2: ~a~%" h)
    (http:call-url-handler h)))
 (define (mw3 h)
   (http:url-handler
-   (format #t "In middleware 3:~a~%" h)
+;   (format #t "In middleware 3:~a~%" h)
    (http:call-url-handler h)))
 
 ;(define m (mw1 (mw2 (mw3 test-handler))))

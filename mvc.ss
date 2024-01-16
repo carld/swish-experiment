@@ -19,7 +19,7 @@
 					; actions are typically query or command
   (define (mvc:action controller view model)
     (http:url-handler
-     (match (controller (view (model params)))
+    (match (controller (view (model params)))
        [#(ok #(,code ,headers ,content))
 	(http:respond conn code headers content)])))
 
@@ -97,7 +97,6 @@
 
 (define t1 (mvc:table `(#(GET ("^/([a-z]+)/path$" file) ,a1))))
 (define entry (t1 'GET "/test/path" ))
-(format #t "DEBUG: ~s ~%" entry)
 (define result
   (match entry
     [#(ok ,action ,name+matches)
