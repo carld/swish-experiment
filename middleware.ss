@@ -23,7 +23,6 @@
 	      after
 	      r)))]))
 
-
 					; example middleware that logs the environment and the response
 
 					; refer to common log format

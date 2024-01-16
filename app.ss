@@ -19,34 +19,34 @@
 (define app-url-handler
   (mvc:url-handler
    (mvc:table
-    `(#(GET ("^/([^/]+)/?$" table)
+    `(#(GET ("^/api/([^/]+)/?$" table)
 	    ,(middleware:compose
 	      (rest:action:query:many 'admin-db 'table)
 	      middleware:log
 	      ))
-      #(GET ("^/([^/]+)/([^/]+)$" table id)
+      #(GET ("^/api/([^/]+)/([^/]+)$" table id)
 	    ,(middleware:compose
 	      (rest:action:query:one 'admin-db 'table 'id)
 	      middleware:log
 	      ))
-      #(POST ("^/([^/]+)/?$" table)
+      #(POST ("^/api/([^/]+)/?$" table)
 	     ,(middleware:compose
 	       (rest:action:command:insert 'admin-db 'table 'id)
 	       middleware:read-json-content
 	       middleware:log
 	       ))
-      #(PATCH ("^/([^/]+)/([^/]+)$" table id)
+      #(PATCH ("^/api/([^/]+)/([^/]+)$" table id)
 	      ,(middleware:compose
 		(rest:action:command:update 'admin-db 'table 'id)
 		middleware:read-json-content
 		middleware:log
 		))
-      #(OPTIONS ("^/([^/]+)/?$" table)
+      #(OPTIONS ("^/api/([^/]+)/?$" table)
 		,(middleware:compose
 		  (rest:action:options)
 		  middleware:log
 		  ))
-      #(OPTIONS ("^/([^/]+)/([^/]+)$" table id)
+      #(OPTIONS ("^/api/([^/]+)/([^/]+)$" table id)
 		,(middleware:compose
 		  (rest:action:options)
 		  middleware:log
