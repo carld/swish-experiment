@@ -109,7 +109,7 @@
       (define table-name (json:ref params table #f))
       (define id (json:ref params pk #f))
       (define sql
-	(trace-ssql `(select ,cols (from ,(string->symbol table-name))
+	(ssql `(select ,cols (from ,(string->symbol table-name))
 			     (where (= ,pk ?)) limit 1)))
       (apply execute sql (list id)))
 
@@ -122,7 +122,7 @@
 		`#(error 'not-found)]
 	       [else `#(ok ,rows ,cols)])]
 	[,err
-	 (error 'rest:mode:query:one "db/sql error" err)]))
+	 (error 'rest:model:query:one "db/sql error" err)]))
     )
 
   (define (rest:model:query:many db table)
