@@ -1,7 +1,8 @@
 #!chezscheme
 (library (restful-sqlite)
   (export rest:controller
-	  rest:action:query
+	  rest:action:query:one
+	  rest:action:query:many
 	  rest:action:command:insert
 	  rest:action:options
 	  rest:action:command:update
@@ -13,7 +14,7 @@
   (import (ssql))
 
   (define content-type "application/json")
-  
+
   (define (rest:controller)
     (lambda (view params)
       (match view
@@ -29,7 +30,7 @@
 	 `#(202 (("Content-Type" . ,content-type)
 		 ("Access-Control-Allow-Origin" . "*"))
 		,(string->utf8 content))]
-	
+
 	[#(ok 'allow ,methods)
 	 `#(204 (("Allow" . ,methods)
 		 ("Access-Control-Allow-Origin" . "*")
@@ -48,7 +49,7 @@
 	 `#(500 (("Content-Type" . "text/plain"))
 		,(string->utf8 "Internal Server Error"))])))
 
-  (define (rest:action:options db path-prefix table pk)
+  (define (rest:action:options)
     (mvc:action
      (mvc:controller (rest:controller))
      (mvc:view (lambda (model params)
@@ -59,23 +60,29 @@
 			 ","))))
      (mvc:model (lambda (params) '()))))
 
-  (define (rest:action:query db path-prefix table pk)
+  (define (rest:action:query:one db table pk)
     (mvc:action
      (mvc:controller (rest:controller))
-     (mvc:view (rest:view:query db path-prefix table pk))
-     (mvc:model (rest:model:query db path-prefix table pk))))
+     (mvc:view (rest:view:query:one))
+     (mvc:model (rest:model:query:one db table pk))))
 
-  (define (rest:action:command:insert db path-prefix table pk)
+  (define (rest:action:query:many db table)
     (mvc:action
      (mvc:controller (rest:controller))
-     (mvc:view (rest:view:command:insert db path-prefix table pk))
-     (mvc:model (rest:model:command:insert db path-prefix table pk))))
+     (mvc:view (rest:view:query:many db table))
+     (mvc:model (rest:model:query:many db table))))
 
-  (define (rest:action:command:update db path-prefix table pk)
+  (define (rest:action:command:insert db table pk)
     (mvc:action
      (mvc:controller (rest:controller))
-     (mvc:view (rest:view:command:update db path-prefix table pk))
-     (mvc:model (rest:model:command:update db path-prefix table pk))))
+     (mvc:view (rest:view:command:insert))
+     (mvc:model (rest:model:command:insert db table pk))))
+
+  (define (rest:action:command:update db table pk)
+    (mvc:action
+     (mvc:controller (rest:controller))
+     (mvc:view (rest:view:command:update))
+     (mvc:model (rest:model:command:update db table pk))))
 
   (define (meta-data db table-name)
     (define sql
@@ -97,7 +104,28 @@
     (cond [obj (proc obj)]
 	  [else  obj]))
 
-  (define (rest:model:query db path-prefix table pk)
+  (define (rest:model:query:one db table pk)
+    (define (one-from params cols)
+      (define table-name (json:ref params table #f))
+      (define id (json:ref params pk #f))
+      (define sql
+	(trace-ssql `(select ,cols (from ,(string->symbol table-name))
+			     (where (= ,pk ?)) limit 1)))
+      (apply execute sql (list id)))
+
+    (lambda (params)
+      (define cols  (table-columns db (json:ref params table #f)))
+      (define result (db:transaction db (lambda () (one-from params cols))))
+      (match result
+	[#(ok ,rows)
+	 (cond [(null? rows)
+		`#(error 'not-found)]
+	       [else `#(ok ,rows ,cols)])]
+	[,err
+	 (error 'rest:mode:query:one "db/sql error" err)]))
+    )
+
+  (define (rest:model:query:many db table)
     (define (many-from params cols)
       (define table-name (json:ref params table #f))
 					; json-server compatible query string
@@ -123,55 +151,42 @@
 	      [else (list 10 0)]))
       (apply execute sql bindings))
 
-    (define (one-from params cols)
-      (define table-name (json:ref params table #f))
-      (define id (json:ref params pk #f))
-      (define sql
-	(ssql `(select ,cols (from ,(string->symbol table-name))
-		       (where (= id ?)) limit 1)))
-      (apply execute sql (list id)))
-
     (lambda (params)
-      (define id (json:ref params 'id #f))
-      (define proc (cond [id  one-from]
-			 [else many-from]))
       (define cols  (table-columns db (json:ref params table #f)))
-      (define result (db:transaction db (lambda () (proc params cols))))
+      (define result (db:transaction db (lambda () (many-from params cols))))
       (match result
 	[#(ok ,rows)
-	 (cond [(and id (null? rows))
-		`#(error 'not-found)]
-	       [else `#(ok ,rows ,cols)])]
+	 `#(ok ,rows ,cols)]
 	[,err
-	 (error 'model "error fetching data" err)]))
-    )
+	 (error 'rest:model:query:many "db/sql error" err
+		)])))
 
-  (define (rest:view:query db path-prefix table pk)
-    (define (render-one row cols)
-      (define obj (json:make-object))
-      (vector-map (lambda (c v) (json:set! obj c v))
-		  cols row)
-      obj)
+  (define (rest:view:one row cols)
+    (define obj (json:make-object))
+    (vector-map (lambda (c v) (json:set! obj c v))
+		cols row)
+    obj)
 
-    (define (render-many name rows fields)
-      (map (lambda (r) (render-one r fields))
-	   rows))
-
+  (define (rest:view:query:one)
     (lambda (model params)
-      (define id (json:ref params 'id #f))
-      (define table-name (json:ref params table #f))
-      (cond [id  (match model
-		   [#(ok ,rows ,cols)
-		    `#(ok ,(json:object->string
-			    (render-one (car rows) cols)))]
-		   [,err err]
-		   )]
-	    [else (match model
-		    [#(ok ,rows ,tmd)
-		     `#(ok ,(json:object->string
-			     (render-many table-name rows tmd)))])])))
+      (match model
+	[#(ok ,rows ,cols)
+	 `#(ok ,(json:object->string
+		 (rest:view:one (car rows) cols)))]
+	[,err err])))
 
-  (define (rest:model:command:insert db path-prefix table pk)
+  (define (rest:view:query:many db table)
+    (define (render-many name rows fields)
+      (map (lambda (r) (rest:view:one r fields))
+	   rows))
+    (lambda (model params)
+      (define table-name (json:ref params table #f))
+      (match model
+	[#(ok ,rows ,cols)
+	 `#(ok ,(json:object->string
+		 (render-many table-name rows cols)))])))
+
+  (define (rest:model:command:insert db table pk)
     (define (insert-one params cols)
       (define table-name (json:ref params table #f))
       (define form-data (json:ref params 'form-data #f))
@@ -188,20 +203,19 @@
     (lambda (params)
       (define cols (table-columns db (json:ref params table #f)))
       (define id (uuid->string (osi_make_uuid)))
-      (json:set! params '(form-data id) id)
+      (json:set! params `(form-data ,pk) id)
       (match (db:transaction
 	      db
 	      (lambda ()
 		(insert-one params cols)))
 	[#(ok ,result) (json:ref params 'form-data #f)]
-	[,err (error 'form-sql "error inserting record" err)])))
+	[,err (error 'rest:model:command:insert "db/sql error" err)])))
 
-  (define (rest:view:command:insert db path-prefix table pk)
+  (define (rest:view:command:insert)
     (lambda (model params)
       `#(ok 'created ,(json:object->string model))))
 
-
-  (define (rest:model:command:update db path-prefix table pk)
+  (define (rest:model:command:update db table pk)
     (define (update-one params cols)
       (define table-name (json:ref params table #f))
       (define form-data (json:ref params 'form-data #f))
@@ -212,8 +226,8 @@
       (define assignments (map (lambda (c) `(,c ?)) cols-no-id))
       (define sql
 	(ssql `(update ,(string->symbol table-name)
-			     (set ,@assignments)
-			     (where (= ,pk ?)))))
+		       (set ,@assignments)
+		       (where (= ,pk ?)))))
       (define bindings (append
 			(map (lambda (c) (json:ref form-data c ""))
 			     cols-no-id)
@@ -227,9 +241,9 @@
 	      (lambda ()
 		(update-one params cols)))
 	[#(ok ,result)  (json:ref params 'form-data #f)]
-	[,err (error 'update-sql "error updating record" err)])))
+	[,err (error 'rest:model:command:update "db/sql error" err)])))
 
-  (define (rest:view:command:update db path-prefix table pk)
+  (define (rest:view:command:update)
     (lambda (model params)
       `#(ok ,(json:object->string model))))
 

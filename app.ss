@@ -21,34 +21,34 @@
    (mvc:table
     `(#(GET ("^/([^/]+)/?$" table)
 	    ,(middleware:compose
-	      (rest:action:query 'admin-db "" 'table 'id)
+	      (rest:action:query:many 'admin-db 'table)
 	      middleware:log
 	      ))
       #(GET ("^/([^/]+)/([^/]+)$" table id)
 	    ,(middleware:compose
-	      (rest:action:query 'admin-db "" 'table 'id)
+	      (rest:action:query:one 'admin-db 'table 'id)
 	      middleware:log
 	      ))
       #(POST ("^/([^/]+)/?$" table)
 	     ,(middleware:compose
-	       (rest:action:command:insert 'admin-db "" 'table 'id)
+	       (rest:action:command:insert 'admin-db 'table 'id)
 	       middleware:read-json-content
 	       middleware:log
 	       ))
       #(PATCH ("^/([^/]+)/([^/]+)$" table id)
 	      ,(middleware:compose
-		(rest:action:command:update 'admin-db "" 'table 'id)
+		(rest:action:command:update 'admin-db 'table 'id)
 		middleware:read-json-content
 		middleware:log
 		))
       #(OPTIONS ("^/([^/]+)/?$" table)
 		,(middleware:compose
-		  (rest:action:options 'admin-db "" 'table 'id)
+		  (rest:action:options)
 		  middleware:log
 		  ))
       #(OPTIONS ("^/([^/]+)/([^/]+)$" table id)
 		,(middleware:compose
-		  (rest:action:options 'admin-db "" 'table 'id)
+		  (rest:action:options)
 		  middleware:log
 		  ))
       ))))
