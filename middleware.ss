@@ -1,8 +1,11 @@
 #!chezscheme
 (library (middleware)
   (export
-   middleware:form-data
-   middleware:logging
+   middleware:read-json-content
+   middleware:log
+   middleware:audit
+   middleware:authorize
+   middleware:authenticate
    middleware:compose
    )
   (import (chezscheme))
@@ -22,7 +25,7 @@
 
 
 					; example middleware that logs the environment and the response
-  (define (middleware:logging url-handler)
+  (define (middleware:log url-handler)
     (http:url-handler
      (format #t "LOG: middleware:logging env: ~a ~a ~a~%"
 	     (<request> method request)
@@ -32,7 +35,7 @@
        (format #t "LOG: middleware:logging resp: ~a~%" resp)
        resp)))
 
-  (define (middleware:form-data url-handler)
+  (define (middleware:read-json-content url-handler)
     (define content-limit (expt 2 20))
     (define timeout  3000)
     (http:url-handler
@@ -42,12 +45,24 @@
 			    (json:set! params 'form-data form-data)
 			    (http:call-url-handler url-handler))
 			  timeout)))
- 
+
+  (define (middleware:audit url-handler)
+    (http:url-handler
+     (http:call-url-handler url-handler)))
+
+  (define (middleware:authenticate url-handler)
+    (http:url-handler
+     (http:call-url-handler url-handler)))
+
+  (define (middleware:authorize url-handler)
+    (http:url-handler
+     (http:call-url-handler url-handler)))
+  
   (define (middleware:compose url-handler . rest)
     (cond [(null? rest) url-handler]
 	  [else (apply middleware:compose
-		  ((car rest) url-handler)
-		  (cdr rest))]))
+		       ((car rest) url-handler)
+		       (cdr rest))]))
   
   )
 
@@ -80,13 +95,13 @@
    (format #t "In middleware 3:~a~%" h)
    (http:call-url-handler h)))
 
-(define m (mw1 (mw2 (mw3 test-handler))))
+;(define m (mw1 (mw2 (mw3 test-handler))))
 (define mx (middleware:compose test-handler mw1 mw2 mw3))
 
 (let ([conn 'conn]
       [request test-request]
       [header (json:make-object)]
       [params (json:make-object)])
- (http:call-url-handler m)
+; (http:call-url-handler m)
  (http:call-url-handler mx)
   )

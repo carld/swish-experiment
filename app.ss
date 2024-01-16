@@ -20,23 +20,37 @@
   (mvc:url-handler
    (mvc:table
     `(#(GET ("^/([^/]+)/?$" table)
-	    ,(rest:action:query 'admin-db "" 'table 'id))
+	    ,(middleware:compose
+	      (rest:action:query 'admin-db "" 'table 'id)
+	      middleware:log
+	      ))
       #(GET ("^/([^/]+)/([^/]+)$" table id)
-	    ,(rest:action:query 'admin-db "" 'table 'id))
+	    ,(middleware:compose
+	      (rest:action:query 'admin-db "" 'table 'id)
+	      middleware:log
+	      ))
       #(POST ("^/([^/]+)/?$" table)
 	     ,(middleware:compose
 	       (rest:action:command:insert 'admin-db "" 'table 'id)
-	       middleware:form-data
+	       middleware:read-json-content
+	       middleware:log
 	       ))
       #(PATCH ("^/([^/]+)/([^/]+)$" table id)
 	      ,(middleware:compose
 		(rest:action:command:update 'admin-db "" 'table 'id)
-		middleware:form-data
+		middleware:read-json-content
+		middleware:log
 		))
       #(OPTIONS ("^/([^/]+)/?$" table)
-		,(rest:action:options 'admin-db "" 'table 'id))
+		,(middleware:compose
+		  (rest:action:options 'admin-db "" 'table 'id)
+		  middleware:log
+		  ))
       #(OPTIONS ("^/([^/]+)/([^/]+)$" table id)
-		,(rest:action:options 'admin-db "" 'table 'id))
+		,(middleware:compose
+		  (rest:action:options 'admin-db "" 'table 'id)
+		  middleware:log
+		  ))
       ))))
 
 (http:add-server
