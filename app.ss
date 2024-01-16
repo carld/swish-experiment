@@ -4,6 +4,7 @@
  (append (library-directories)
 	 `(("vendor" . "vendor"))))
 
+(import (middleware))
 (import (mvc))
 (import (restful-sqlite))
 (import (data))
@@ -18,24 +19,20 @@
 (define app-url-handler
   (mvc:url-handler
    (mvc:table
-    `(#(GET "^/([^/]+)/?$"
-	    ,(rest:action:query:sql->json 'admin-db "" 'table 'id)
-	    (table))
-      #(GET "^/([^/]+)/([^/]+)$"
-	    ,(rest:action:query:sql->json 'admin-db "" 'table 'id)
-	    (table id))
-      #(POST "^/([^/]+)/?$"
-	     ,(rest:action:command:form->sql 'admin-db "" 'table 'id)
-	     (table))
-      #(PATCH "/([^/]+)/([^/]+)$"
-	      ,(rest:action:command:update 'admin-db "" 'table 'id)
-	      (table id))
-      #(OPTIONS "^/([^/]+)/?$"
-		,(rest:action:options 'admin-db "" 'table 'id)
-		(table))
-      #(OPTIONS "^/([^/]+)/([^/]+)$"
-		,(rest:action:options 'admin-db "" 'table 'id)
-		(table id))
+    `(#(GET ("^/([^/]+)/?$" table)
+	    ,(rest:action:query 'admin-db "" 'table 'id))
+      #(GET ("^/([^/]+)/([^/]+)$" table id)
+	    ,(rest:action:query 'admin-db "" 'table 'id))
+      #(POST ("^/([^/]+)/?$" table)
+	     ,(middleware:form-data
+	       (rest:action:command:insert 'admin-db "" 'table 'id)))
+      #(PATCH ("^/([^/]+)/([^/]+)$" table id)
+	      ,(middleware:form-data
+		(rest:action:command:update 'admin-db "" 'table 'id)))
+      #(OPTIONS ("^/([^/]+)/?$" table)
+		,(rest:action:options 'admin-db "" 'table 'id))
+      #(OPTIONS ("^/([^/]+)/([^/]+)$" table id)
+		,(rest:action:options 'admin-db "" 'table 'id))
       ))))
 
 (http:add-server

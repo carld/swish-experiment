@@ -16,11 +16,12 @@
 					; in the initization of the gen-server, construct the
 					; (controller (view (model params)))
 					; using these combinators
-
 					; actions are typically query or command
   (define (mvc:action controller view model)
-    (lambda  (params form-data)
-      (controller (view (model params form-data)))))
+    (http:url-handler
+     (match (controller (view (model params)))
+       [#(ok #(,code ,headers ,content))
+	(http:respond conn code headers content)])))
 
   (define (mvc:controller controller)
     (lambda  (view-result)
@@ -37,61 +38,54 @@
 	)))
 
   (define (mvc:model model)
-    (lambda (params form-data)
-      `#(ok ,(model params form-data) ,params)))
+    (lambda (params)
+      `#(ok ,(model params) ,params)))
 
   (define (mvc:route-matches method path table-entry)
-    (define matches (pregexp-match (vector-ref table-entry 1) path))
-    (if (and (pair? matches)
-	     (eq? method (vector-ref table-entry 0)))
-	matches
-	#f))
+    (define regexp/names (vector-ref table-entry 1))
+    (define names   (cdr regexp/names))
+    (define matches (pregexp-match (car regexp/names) path))
+    (cond [(and (pair? matches)
+		(eq? method (vector-ref table-entry 0)))
+	   (assert (eq? (length names) (length (cdr matches))))
+	   (map (lambda (name match) `(,name . ,match)) names (cdr matches))]
+	  [else #f]))
 
   (define (mvc:find-route routes method path)
-    (cond
-     [(null? routes) #f   ]
-     [(pair? routes)
-      (let* ([entry   (car routes)]
-	     [matches (mvc:route-matches method path entry)])
-	(if matches
-	    `#(ok ,entry ,matches)
-	    (mvc:find-route (cdr routes) method path)))]))
+    (cond [(null? routes) #f]
+	  [(pair? routes)
+	   (let* ([entry   (car routes)]
+		  [names+matches (mvc:route-matches method path entry)])
+	     (cond [names+matches
+		    `#(ok ,entry ,names+matches)]
+		   [else 
+		    (mvc:find-route (cdr routes) method path)]))]))
 
   (define (mvc:table routes)
 					; TODO cache requests to avoid regexp-match for same path
 					;    (define cache (ht:make string-ci-hash string-ci=? string?))
-    (lambda (method path params)
-      (define entry (mvc:find-route routes method path))
-      (match entry
-	[#(ok #(,m ,p ,action ,capture-names) ,matches)
-	 `#(ok ,action
-	       ,(json:set-list params capture-names (cdr matches))
-	       ,(expt 2 20)
-	       ,0
-	       ()
-	       )]
 
-	[#(ok #(,method ,path-regexp ,action) ,matches)
-	 `#(ok ,action ,params) ]
+    
+    (lambda (method path)
+      (define found (mvc:find-route routes method path))
+      (match found
+	[#(ok #(,m ,p ,action) ,names+matches)
+	 `#(ok ,action ,names+matches)]
 	[,err   err])))
-
+  
   (define (mvc:url-handler route-table-dispatch)
     (http:url-handler
      (match (route-table-dispatch (<request> method request)
-				  (<request> path request)
-				  params)
-       [#(ok ,action ,params ,content-limit ,file-limit ,files)
-	(http:call-with-form
-	 conn header content-limit file-limit files
-	 (lambda (form-data)
-	   (match (action params form-data)
-	     [#(ok #(,code ,header ,content))
-	      (http:respond conn code header content)])))]
-       [,err (http:respond conn
-			   404
-			   `(("Content-Type" . "text/plain"))
-			   (string->utf8 "Not Found"))])))
-
+				  (<request> path request))
+       [#(ok ,action ,params-from-path-match)
+	; set the captured matches from the path regexp in params
+	(json:set-list params params-from-path-match)
+	(http:call-url-handler action)]
+       [,err (http:respond
+	      conn
+	      404
+	      `(("Content-Type" . "text/plain"))
+	      (string->utf8 "Not Found"))])))
 
   )
 
@@ -99,15 +93,17 @@
 					; examples/tests
 (define c1 (mvc:controller (lambda (v p) (format "result: ~a" v) )))
 (define v1 (mvc:view  (lambda (m p) (number->string m) )))
-(define m1 (mvc:model (lambda (p fd) (+ 1 p) )))
+(define m1 (mvc:model (lambda (p) (+ 1 p) )))
 (define a1 (mvc:action c1 v1 m1))
 					;(a1 `#(ok 6))
 
-(define t1 (mvc:table `(#(GET "^/test/path$" ,a1))))
-(define entry (t1 'GET "/test/path" (json:make-object )))
+(define t1 (mvc:table `(#(GET ("^/([a-z]+)/path$" file) ,a1))))
+(define entry (t1 'GET "/test/path" ))
+(format #t "DEBUG: ~s ~%" entry)
 (define result
   (match entry
-    [#(ok ,action ,params) (action 6 '()) ]))
-(display  (cond [(equal? result `#(ok "result: 7")) `#(test-ok ,result)]
-		[else `#(test-failed ,result )]))
-(newline)
+    [#(ok ,action ,name+matches)
+     (assert (assoc 'file name+matches))
+     (assert (procedure? action))
+     ]))
+
